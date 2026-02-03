@@ -1,0 +1,1103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>je ka focus oo</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --surface2: #242836;
+    --accent: #6c63ff; --accent2: #ff6b6b; --text: #e4e4e7; --muted: #71717a;
+    --border: #2e3244; --green: #34d399; --orange: #f59e0b; --radius: 10px; --cyan: #22d3ee;
+  }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; }
+
+  .sidebar { width: 220px; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 20px 0; flex-shrink: 0; }
+  .sidebar h1 { font-size: 18px; padding: 0 20px 20px; border-bottom: 1px solid var(--border); }
+  .sidebar nav { display: flex; flex-direction: column; gap: 4px; padding: 12px; }
+  .sidebar nav button { background: none; border: none; color: var(--muted); font-size: 14px; padding: 10px 14px; border-radius: var(--radius); cursor: pointer; text-align: left; transition: .15s; }
+  .sidebar nav button:hover { background: var(--surface2); color: var(--text); }
+  .sidebar nav button.active { background: var(--accent); color: #fff; }
+  .digi-clock { padding: 16px 20px; border-top: 1px solid var(--border); margin-top: auto; text-align: center; }
+  .digi-clock .time { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .digi-clock .ampm { font-size: 14px; color: var(--accent); font-weight: 600; }
+  .digi-clock .date { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .header { padding: 14px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+  .header h2 { font-size: 20px; }
+  .content { flex: 1; overflow-y: auto; padding: 20px 24px; }
+
+  .btn { padding: 8px 16px; border: none; border-radius: var(--radius); cursor: pointer; font-size: 13px; font-weight: 600; transition: .15s; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { opacity: .85; }
+  .btn-danger { background: var(--accent2); color: #fff; }
+  .btn-danger:hover { opacity: .85; }
+  .btn-ghost { background: var(--surface2); color: var(--text); }
+  .btn-sm { padding: 5px 10px; font-size: 12px; }
+  .btn-edit { background: none; border: 1px solid var(--border); color: var(--muted); padding: 3px 8px; font-size: 11px; border-radius: 6px; cursor: pointer; }
+  .btn-edit:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Calendar */
+  .cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .cal-header h3 { font-size: 18px; }
+  .cal-nav { display: flex; gap: 6px; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+  .cal-day-label { text-align: center; font-size: 11px; color: var(--muted); padding: 5px 0; font-weight: 600; }
+  .cal-day { aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 5px 3px; border-radius: 8px; cursor: pointer; font-size: 13px; transition: .15s; border: 1px solid transparent; }
+  .cal-day:hover { background: var(--surface2); }
+  .cal-day.today { border-color: var(--accent); }
+  .cal-day.selected { background: var(--accent); color: #fff; }
+  .cal-day.other-month { color: var(--muted); opacity: .3; }
+  .cal-dots { display: flex; gap: 2px; margin-top: 2px; }
+  .cal-dots .dot { width: 4px; height: 4px; border-radius: 50%; }
+  .dot-note { background: var(--accent2); } .dot-task { background: var(--green); } .dot-perm { background: var(--orange); } .dot-goal { background: var(--cyan); }
+  .cal-day.selected .dot { background: #fff !important; }
+
+  /* Day panel */
+  .day-panel { margin-top: 18px; }
+  .day-panel > h3 { font-size: 16px; margin-bottom: 14px; color: var(--accent); }
+  .day-section { margin-bottom: 14px; }
+  .day-section h4 { font-size: 12px; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .5px; }
+  .desc-msg { background: var(--surface); border-left: 3px solid var(--green); padding: 10px 14px; margin-bottom: 8px; border-radius: 0 var(--radius) var(--radius) 0; font-size: 13px; line-height: 1.5; display: flex; justify-content: space-between; align-items: center; }
+  .desc-msg .msg-text { flex: 1; }
+  .desc-msg .msg-text .highlight { color: var(--green); font-weight: 600; }
+  .desc-msg .msg-text .time-hl { color: var(--orange); font-weight: 600; }
+  .desc-msg.perm-msg { border-left-color: var(--orange); }
+  .desc-msg.done-msg { opacity: .5; }
+  .desc-msg.done-msg .msg-text { text-decoration: line-through; }
+  .note-item { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 12px; margin-bottom: 6px; display: flex; align-items: center; gap: 10px; font-size: 13px; }
+  .note-item p { flex: 1; }
+  .actions { display: flex; gap: 4px; flex-shrink: 0; }
+  .add-row { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+  .add-row input, .add-row select { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); padding: 7px 10px; font-size: 13px; font-family: inherit; }
+  .add-row input:focus { outline: none; border-color: var(--accent); }
+  .add-row input[type=text] { flex: 1; min-width: 100px; }
+
+  /* Tasks & To-Do & Goals */
+  .three-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .full-width { grid-column: 1 / -1; }
+  @media (max-width: 800px) { .three-col { grid-template-columns: 1fr; } }
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+  .panel h3 { font-size: 15px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  .panel h3 .badge { background: var(--accent); color: #fff; font-size: 11px; padding: 2px 8px; border-radius: 20px; }
+  .panel h3 .badge-green { background: var(--green); }
+  .panel h3 .badge-cyan { background: var(--cyan); color: #000; }
+  .t-item { display: flex; align-items: flex-start; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--border); }
+  .t-item:last-of-type { border-bottom: none; }
+  .t-check { width: 17px; height: 17px; border-radius: 50%; border: 2px solid var(--border); cursor: pointer; flex-shrink: 0; margin-top: 2px; transition: .15s; }
+  .t-check.done { background: var(--green); border-color: var(--green); }
+  .t-text { font-size: 13px; flex: 1; }
+  .t-text.done { text-decoration: line-through; color: var(--muted); }
+  .t-meta { font-size: 10px; color: var(--muted); margin-top: 2px; display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
+  .tag { font-size: 9px; padding: 2px 5px; border-radius: 6px; font-weight: 600; }
+  .tag-perm { background: var(--orange); color: #000; }
+  .tag-alarm { background: var(--accent2); color: #fff; }
+  .tag-sound { background: var(--accent); color: #fff; }
+  .t-del { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 15px; padding: 0 3px; }
+  .t-del:hover { color: var(--accent2); }
+  .add-t-row { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; align-items: center; }
+  .add-t-row input[type=text] { flex: 1; min-width: 80px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); padding: 7px 10px; font-size: 12px; font-family: inherit; }
+  .add-t-row input:focus { outline: none; border-color: var(--accent); }
+  .add-t-row select, .add-t-row input[type=time] { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); padding: 7px; font-size: 12px; font-family: inherit; }
+  .cb-label { font-size: 11px; display: flex; align-items: center; gap: 3px; color: var(--muted); cursor: pointer; white-space: nowrap; }
+  .cb-label input { accent-color: var(--accent); }
+
+  /* Alarms */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; margin-bottom: 8px; }
+  .card:hover { border-color: var(--accent); }
+  .card h3 { font-size: 14px; margin-bottom: 3px; display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+  .card p { color: var(--muted); font-size: 12px; }
+  .card-actions { display: flex; gap: 5px; margin-top: 6px; }
+
+  /* Timer */
+  .timer-wrap { display: flex; flex-direction: column; align-items: center; padding: 30px 0; }
+  .timer-display { font-size: 68px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: 2px; margin-bottom: 20px; }
+  .timer-controls { display: flex; gap: 10px; margin-bottom: 18px; }
+  .timer-presets { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; margin-bottom: 18px; }
+  .timer-set { display: flex; gap: 6px; align-items: center; }
+  .timer-set input { width: 55px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); padding: 7px; font-size: 14px; text-align: center; font-family: inherit; }
+  .timer-set input:focus { outline: none; border-color: var(--accent); }
+
+  /* Modal */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: none; align-items: center; justify-content: center; z-index: 100; }
+  .modal-overlay.show { display: flex; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px; width: 400px; max-width: 90vw; }
+  .modal h3 { margin-bottom: 12px; }
+  .form-group { margin-bottom: 10px; }
+  .form-group label { display: block; margin-bottom: 4px; font-size: 11px; color: var(--muted); }
+  .form-group input, .form-group textarea, .form-group select { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); padding: 8px 10px; font-size: 13px; font-family: inherit; }
+  .form-group input:focus, .form-group textarea:focus { outline: none; border-color: var(--accent); }
+  .modal-btns { display: flex; gap: 6px; justify-content: flex-end; margin-top: 14px; }
+  .sound-preview { display: flex; gap: 5px; margin-top: 5px; }
+
+  .alarm-popup { position: fixed; top: 20px; right: 20px; background: var(--accent2); color: #fff; padding: 16px 22px; border-radius: 14px; z-index: 200; display: none; box-shadow: 0 8px 30px rgba(255,107,107,.4); animation: shake .4s infinite alternate; }
+  .alarm-popup.show { display: block; }
+  @keyframes shake { from { transform: translateX(-3px); } to { transform: translateX(3px); } }
+  .empty { text-align: center; color: var(--muted); padding: 30px 0; font-size: 13px; }
+
+  /* AI Chat */
+  .ai-setup { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; max-width: 600px; margin-bottom: 16px; }
+  .ai-setup h3 { font-size: 15px; margin-bottom: 8px; }
+  .ai-setup p { font-size: 12px; color: var(--muted); margin-bottom: 10px; line-height: 1.5; }
+  .ai-setup input { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); padding: 9px 12px; font-size: 13px; font-family: inherit; }
+  .ai-setup input:focus { outline: none; border-color: var(--accent); }
+  .ai-key-status { font-size: 11px; margin-top: 6px; }
+  .ai-key-status.connected { color: var(--green); }
+  .ai-key-status.none { color: var(--muted); }
+  .chat-box { display: flex; flex-direction: column; height: calc(100vh - 140px); max-width: 700px; }
+  .chat-messages { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-bottom: 10px; }
+  .chat-msg { max-width: 85%; padding: 10px 14px; border-radius: 12px; font-size: 13px; line-height: 1.5; word-wrap: break-word; }
+  .chat-msg.user { align-self: flex-end; background: var(--accent); color: #fff; border-bottom-right-radius: 4px; }
+  .chat-msg.ai { align-self: flex-start; background: var(--surface); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+  .chat-msg.ai pre { background: var(--surface2); padding: 8px; border-radius: 6px; overflow-x: auto; margin: 6px 0; font-size: 12px; }
+  .chat-msg.system { align-self: center; color: var(--muted); font-size: 11px; font-style: italic; }
+  .chat-input-row { display: flex; gap: 8px; margin-top: 10px; }
+  .chat-input-row input { flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); padding: 10px 14px; font-size: 13px; font-family: inherit; }
+  .chat-input-row input:focus { outline: none; border-color: var(--accent); }
+  .typing-indicator { color: var(--muted); font-size: 12px; font-style: italic; padding: 4px 0; }
+
+  /* Help Guide */
+  .help-section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px; margin-bottom: 14px; max-width: 700px; }
+  .help-section h3 { font-size: 16px; margin-bottom: 10px; color: var(--accent); display: flex; align-items: center; gap: 8px; }
+  .help-section h4 { font-size: 13px; color: var(--green); margin: 10px 0 5px; }
+  .help-section p, .help-section li { font-size: 13px; color: var(--text); line-height: 1.6; }
+  .help-section ul { padding-left: 20px; margin-bottom: 8px; }
+  .help-section li { margin-bottom: 4px; }
+  .help-section .tip { background: var(--surface2); border-left: 3px solid var(--orange); padding: 8px 12px; border-radius: 0 8px 8px 0; margin: 8px 0; font-size: 12px; color: var(--orange); }
+  .help-section code { background: var(--surface2); padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <h1>je ka focus oo</h1>
+  <nav>
+    <button class="active" onclick="showTab('calendar')">Calendar</button>
+    <button onclick="showTab('tasks')">Tasks</button>
+    <button onclick="showTab('todo')">To-Do List</button>
+    <button onclick="showTab('goals')">Weekly Goals</button>
+    <button onclick="showTab('alarms')">Alarms</button>
+    <button onclick="showTab('timer')">Timer</button>
+    <button onclick="showTab('ai')">AI Assistant</button>
+    <button onclick="showTab('help')">Help Guide</button>
+  </nav>
+  <div class="digi-clock">
+    <div class="time" id="clockTime">--:--</div>
+    <div class="date" id="clockDate">---</div>
+  </div>
+</div>
+
+<div class="main">
+  <div class="header">
+    <h2 id="tabTitle">Calendar</h2>
+    <button class="btn btn-primary" id="addBtn" onclick="openAdd()" style="display:none">+ Add Alarm</button>
+  </div>
+  <div class="content" id="content"></div>
+</div>
+
+<!-- Alarm Modal -->
+<div class="modal-overlay" id="alarmModal">
+  <div class="modal">
+    <h3 id="alarmModalTitle">New Alarm</h3>
+    <div class="form-group"><label>Label</label><input id="alarmLabel" placeholder="Alarm label"></div>
+    <div class="form-group"><label>Date & Time</label><input type="datetime-local" id="alarmTime"></div>
+    <div class="form-group">
+      <label>Alarm Sound</label>
+      <select id="alarmSound">
+        <option value="classic">Classic Beep</option><option value="gentle">Gentle Chime</option>
+        <option value="urgent">Urgent Siren</option><option value="melody">Melody</option>
+        <option value="digital">Digital Buzz</option><option value="bell">Bell Ring</option>
+      </select>
+      <div class="sound-preview">
+        <button class="btn btn-ghost btn-sm" onclick="previewSound()">Preview</button>
+        <button class="btn btn-ghost btn-sm" onclick="stopAlarmSound()">Stop</button>
+      </div>
+    </div>
+    <div class="form-group"><label class="cb-label"><input type="checkbox" id="alarmPermanent"> Repeat daily (permanent)</label></div>
+    <div class="modal-btns">
+      <button class="btn btn-ghost" onclick="closeModals()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveAlarm()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Task Edit Modal -->
+<div class="modal-overlay" id="taskEditModal">
+  <div class="modal">
+    <h3>Edit Task</h3>
+    <div class="form-group"><label>Task Name</label><input id="editTaskText" placeholder="Task name"></div>
+    <div class="form-group"><label>Alarm Time (optional)</label><input type="time" id="editTaskAlarm"></div>
+    <div class="form-group"><label>Alarm Sound</label>
+      <select id="editTaskSound">
+        <option value="classic">Classic Beep</option><option value="gentle">Gentle Chime</option>
+        <option value="urgent">Urgent Siren</option><option value="melody">Melody</option>
+        <option value="digital">Digital Buzz</option><option value="bell">Bell Ring</option>
+      </select>
+    </div>
+    <div class="form-group"><label>Day</label>
+      <select id="editTaskDay">
+        <option value="">Any day</option><option>Monday</option><option>Tuesday</option><option>Wednesday</option>
+        <option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option>
+      </select>
+    </div>
+    <div class="form-group"><label class="cb-label"><input type="checkbox" id="editTaskPerm"> Permanent (repeats daily)</label></div>
+    <div class="modal-btns">
+      <button class="btn btn-danger" onclick="delTaskFromEdit()">Delete</button>
+      <button class="btn btn-ghost" onclick="closeTaskEdit()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveTaskEdit()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Alarm Popup -->
+<div class="alarm-popup" id="alarmPopup">
+  <h3 id="alarmPopupLabel">Alarm!</h3>
+  <p id="alarmPopupTime"></p>
+  <button class="btn" style="background:#fff;color:#333;margin-top:8px" onclick="dismissAlarm()">Dismiss</button>
+</div>
+<div class="alarm-popup" id="timerPopup" style="background:var(--accent)">
+  <h3>Timer Done!</h3>
+  <p id="timerPopupLabel"></p>
+  <button class="btn" style="background:#fff;color:#333;margin-top:8px" onclick="dismissTimer()">Dismiss</button>
+</div>
+
+<script>
+let currentTab = 'calendar';
+let calYear, calMonth, selectedDate;
+let editingAlarmId = null, editingTaskId = null;
+let alarmAudioCtx = null, alarmNodes = [];
+let timerInterval = null, timerSeconds = 0, timerRunning = false, timerOriginal = 0;
+
+const DAYS_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const DAYS_FULL = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const SOUND_NAMES = { classic:'Classic Beep', gentle:'Gentle Chime', urgent:'Urgent Siren', melody:'Melody', digital:'Digital Buzz', bell:'Bell Ring' };
+
+const NOW = new Date();
+calYear = NOW.getFullYear(); calMonth = NOW.getMonth(); selectedDate = toKey(NOW);
+
+function toKey(d) { return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function todayKey() { return toKey(new Date()); }
+function getDayOfWeek(key) { return DAYS_FULL[new Date(key+'T00:00:00').getDay()]; }
+
+// 12-hour time formatter
+function fmt12(timeStr) {
+  if (!timeStr) return '';
+  const [h24, m] = timeStr.split(':').map(Number);
+  const ampm = h24 >= 12 ? 'PM' : 'AM';
+  const h = h24 % 12 || 12;
+  return h + ':' + String(m).padStart(2,'0') + ' ' + ampm;
+}
+function fmtDate12(dateStr) {
+  const d = new Date(dateStr);
+  return d.toLocaleString('en-US', { hour:'numeric', minute:'2-digit', hour12:true, month:'short', day:'numeric' });
+}
+
+// ---- Digital Clock (12hr) ----
+function updateClock() {
+  const now = new Date();
+  const h24 = now.getHours(); const m = now.getMinutes(); const s = now.getSeconds();
+  const ampm = h24 >= 12 ? 'PM' : 'AM';
+  const h = h24 % 12 || 12;
+  document.getElementById('clockTime').innerHTML = h+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')+' <span class="ampm">'+ampm+'</span>';
+  document.getElementById('clockDate').textContent = now.toLocaleDateString('en-US', { weekday:'long', month:'short', day:'numeric' });
+}
+updateClock(); setInterval(updateClock, 1000);
+
+// ---- Storage ----
+function getData(k, fb) { try { return JSON.parse(localStorage.getItem(k)) || fb; } catch { return fb; } }
+function setData(k, v) { localStorage.setItem(k, JSON.stringify(v)); }
+function getTasks() { return getData('org_tasks3', []); }
+function setTasks(t) { setData('org_tasks3', t); }
+function getDayNotes() { return getData('org_daynotes', {}); }
+function setDayNotes(d) { setData('org_daynotes', d); }
+function getAlarms() { return getData('org_alarms', []); }
+function setAlarms(a) { setData('org_alarms', a); }
+function getTodos() { return getData('org_todos', []); }
+function setTodos(t) { setData('org_todos', t); }
+function getGoals() { return getData('org_goals', []); }
+function setGoals(g) { setData('org_goals', g); }
+
+// ---- Sound Engine ----
+function playSound(type) {
+  stopAlarmSound();
+  try {
+    alarmAudioCtx = new (window.AudioContext || window.webkitAudioContext)(); alarmNodes = []; const ctx = alarmAudioCtx;
+    if (type === 'classic') { const o=ctx.createOscillator(),g=ctx.createGain(); o.type='sine';o.frequency.value=800;g.gain.value=0.4; o.connect(g);g.connect(ctx.destination);o.start(); let on=true; const iv=setInterval(()=>{g.gain.value=on?0:0.4;on=!on},400); alarmNodes.push({osc:o,iv}); }
+    else if (type==='gentle') { const fr=[523,659,784,1047]; let i=0; function pn(){if(!alarmAudioCtx)return;const o=ctx.createOscillator(),g=ctx.createGain();o.type='sine';o.frequency.value=fr[i%fr.length];g.gain.value=0.25;o.connect(g);g.connect(ctx.destination);o.start();g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.8);o.stop(ctx.currentTime+0.8);i++} pn(); const iv=setInterval(pn,1000); alarmNodes.push({iv}); }
+    else if (type==='urgent') { const o=ctx.createOscillator(),g=ctx.createGain();o.type='square';o.frequency.value=600;g.gain.value=0.5;o.connect(g);g.connect(ctx.destination);o.start();let hi=true;const iv=setInterval(()=>{o.frequency.value=hi?1000:600;hi=!hi},250);alarmNodes.push({osc:o,iv}); }
+    else if (type==='melody') { const ns=[523,587,659,698,784,698,659,587];let i=0;function pm(){if(!alarmAudioCtx)return;const o=ctx.createOscillator(),g=ctx.createGain();o.type='triangle';o.frequency.value=ns[i%ns.length];g.gain.value=0.35;o.connect(g);g.connect(ctx.destination);o.start();g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.4);o.stop(ctx.currentTime+0.45);i++}pm();const iv=setInterval(pm,300);alarmNodes.push({iv}); }
+    else if (type==='digital') { const o=ctx.createOscillator(),g=ctx.createGain();o.type='sawtooth';o.frequency.value=440;g.gain.value=0.35;o.connect(g);g.connect(ctx.destination);o.start();let on=true;const iv=setInterval(()=>{g.gain.value=on?0:0.35;on=!on},150);alarmNodes.push({osc:o,iv}); }
+    else if (type==='bell') { function rb(){if(!alarmAudioCtx)return;[1,2.5,4,6].forEach((m,i)=>{const o=ctx.createOscillator(),g=ctx.createGain();o.type='sine';o.frequency.value=440*m;g.gain.value=0.3/(i+1);o.connect(g);g.connect(ctx.destination);o.start();g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+1.5);o.stop(ctx.currentTime+1.6)})}rb();const iv=setInterval(rb,2000);alarmNodes.push({iv}); }
+  } catch(e) {}
+}
+function stopAlarmSound() { try { for(const n of alarmNodes){if(n.iv)clearInterval(n.iv);if(n.osc)try{n.osc.stop()}catch(e){}} if(alarmAudioCtx)alarmAudioCtx.close(); }catch(e){} alarmAudioCtx=null;alarmNodes=[]; }
+function previewSound() { playSound(document.getElementById('alarmSound').value); setTimeout(stopAlarmSound,3000); }
+
+// ---- Tabs ----
+function showTab(tab) {
+  currentTab = tab;
+  const titles = { calendar:'Calendar', tasks:'Tasks', todo:'To-Do List', goals:'Weekly Goals', alarms:'Alarms', timer:'Timer', ai:'AI Assistant', help:'Help Guide' };
+  document.getElementById('tabTitle').textContent = titles[tab];
+  document.querySelectorAll('.sidebar nav button').forEach(b => b.classList.toggle('active', b.textContent.toLowerCase() === tab || (tab==='todo' && b.textContent==='To-Do List') || (tab==='goals' && b.textContent==='Weekly Goals') || (tab==='ai' && b.textContent==='AI Assistant') || (tab==='help' && b.textContent==='Help Guide')));
+  document.getElementById('addBtn').style.display = tab === 'alarms' ? '' : 'none';
+  render();
+}
+function render() {
+  const c = document.getElementById('content');
+  if (currentTab==='calendar') renderCalendar(c);
+  else if (currentTab==='tasks') renderTasks(c);
+  else if (currentTab==='todo') renderTodo(c);
+  else if (currentTab==='goals') renderGoals(c);
+  else if (currentTab==='alarms') renderAlarms(c);
+  else if (currentTab==='ai') renderAI(c);
+  else if (currentTab==='help') renderHelp(c);
+  else renderTimer(c);
+}
+
+// ---- Calendar ----
+function getItemsForDate(key) {
+  const notes = getDayNotes()[key] || [];
+  const tasks = getTasks(); const dayName = getDayOfWeek(key); const tk = todayKey();
+  const dateTasks = tasks.filter(t => { if(t.permanent) return true; if(t.source==='today'&&key===tk) return true; if(t.source==='weekly'&&t.day===dayName) return true; return false; });
+  const goals = getGoals().filter(g => !g.done);
+  return { notes, tasks: dateTasks, goals };
+}
+
+function renderCalendar(c) {
+  const todayStr = todayKey();
+  const firstDay = new Date(calYear,calMonth,1).getDay();
+  const daysInMonth = new Date(calYear,calMonth+1,0).getDate();
+  const prevDays = new Date(calYear,calMonth,0).getDate();
+
+  let html = `<div class="cal-header"><div class="cal-nav"><button class="btn btn-ghost btn-sm" onclick="changeMonth(-1)">&lt;</button></div><h3>${MONTHS[calMonth]} ${calYear}</h3><div class="cal-nav"><button class="btn btn-ghost btn-sm" onclick="changeMonth(1)">&gt;</button><button class="btn btn-ghost btn-sm" onclick="goToday()">Today</button></div></div><div class="cal-grid">`;
+  DAYS_SHORT.forEach(d => html += `<div class="cal-day-label">${d}</div>`);
+  for (let i=firstDay-1;i>=0;i--) html += `<div class="cal-day other-month">${prevDays-i}</div>`;
+
+  for (let d=1;d<=daysInMonth;d++) {
+    const key = calYear+'-'+String(calMonth+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    const items = getItemsForDate(key);
+    const hasN = items.notes.length>0, hasT = items.tasks.length>0, hasP = items.tasks.some(t=>t.permanent);
+    let dots='';
+    if (hasN||hasT||hasP) { dots='<div class="cal-dots">'; if(hasN)dots+='<span class="dot dot-note"></span>'; if(hasT)dots+='<span class="dot dot-task"></span>'; if(hasP)dots+='<span class="dot dot-perm"></span>'; dots+='</div>'; }
+    html += `<div class="cal-day${key===todayStr?' today':''}${key===selectedDate?' selected':''}" onclick="selectDay('${key}')">${d}${dots}</div>`;
+  }
+  const rem = (7-(firstDay+daysInMonth)%7)%7;
+  for (let i=1;i<=rem;i++) html += `<div class="cal-day other-month">${i}</div>`;
+  html += '</div>';
+
+  // Day detail
+  const selDate = new Date(selectedDate+'T00:00:00');
+  const dateLabel = selDate.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+  const items = getItemsForDate(selectedDate);
+  const isToday = selectedDate === todayStr;
+
+  html += `<div class="day-panel"><h3>${dateLabel}</h3>`;
+
+  // Descriptive task messages
+  html += '<div class="day-section"><h4>Your Schedule</h4>';
+  if (items.tasks.length) {
+    items.tasks.forEach(t => {
+      const timeStr = t.alarmTime ? ' at <span class="time-hl">'+fmt12(t.alarmTime)+'</span>' : '';
+      const permLabel = t.permanent ? ' <span style="color:var(--orange)">(every day)</span>' : '';
+      const dayLabel = isToday ? 'today' : 'on '+getDayOfWeek(selectedDate);
+      const msg = `You have <span class="highlight">${esc(t.text)}</span> ${dayLabel}${timeStr}${permLabel}`;
+      html += `<div class="desc-msg${t.permanent?' perm-msg':''}${t.done?' done-msg':''}">
+        <span class="msg-text">${msg}</span>
+        <div class="actions">
+          <button class="btn-edit" onclick="openEditTask('${t.id}')">Edit</button>
+          <div class="t-check${t.done?' done':''}" style="width:15px;height:15px;border-radius:50%;border:2px solid var(--border);cursor:pointer;${t.done?'background:var(--green);border-color:var(--green)':''}" onclick="toggleTask('${t.id}')"></div>
+        </div>
+      </div>`;
+    });
+  } else {
+    html += `<p style="color:var(--muted);font-size:13px">${isToday ? "You're all clear today! No tasks scheduled." : "Nothing scheduled for this day."}</p>`;
+  }
+  html += '</div>';
+
+  // Notes
+  html += '<div class="day-section"><h4>Notes</h4>';
+  if (items.notes.length) { items.notes.forEach((n,i) => { html += `<div class="note-item"><p>${esc(n)}</p><div class="actions"><button class="btn btn-sm btn-danger" onclick="deleteDayNote('${selectedDate}',${i})">Del</button></div></div>`; }); }
+  else { html += '<p style="color:var(--muted);font-size:13px">No notes.</p>'; }
+  html += `<div class="add-row"><input type="text" id="dayNoteInput" placeholder="Add a note..." onkeydown="if(event.key==='Enter')addDayNote()"><button class="btn btn-primary btn-sm" onclick="addDayNote()">Add</button></div></div>`;
+
+  html += '</div>';
+  c.innerHTML = html;
+}
+
+function changeMonth(dir) { calMonth+=dir; if(calMonth>11){calMonth=0;calYear++} if(calMonth<0){calMonth=11;calYear--} render(); }
+function goToday() { const n=new Date(); calYear=n.getFullYear();calMonth=n.getMonth();selectedDate=todayKey();render(); }
+function selectDay(key) { selectedDate=key; render(); }
+function addDayNote() { const i=document.getElementById('dayNoteInput'),t=i.value.trim();if(!t)return;const n=getDayNotes();if(!n[selectedDate])n[selectedDate]=[];n[selectedDate].push(t);setDayNotes(n);render(); }
+function deleteDayNote(d,i) { const n=getDayNotes();if(n[d]){n[d].splice(i,1);if(!n[d].length)delete n[d]}setDayNotes(n);render(); }
+function toggleTask(id) { const t=getTasks(),i=t.findIndex(x=>x.id===id);if(i>=0){t[i].done=!t[i].done;setTasks(t);render()} }
+
+// ---- Task Edit Modal ----
+function openEditTask(id) {
+  const t = getTasks().find(x => x.id === id); if (!t) return;
+  editingTaskId = id;
+  document.getElementById('editTaskText').value = t.text;
+  document.getElementById('editTaskAlarm').value = t.alarmTime || '';
+  document.getElementById('editTaskSound').value = t.sound || 'classic';
+  document.getElementById('editTaskDay').value = t.day || '';
+  document.getElementById('editTaskPerm').checked = !!t.permanent;
+  document.getElementById('taskEditModal').classList.add('show');
+}
+function closeTaskEdit() { document.getElementById('taskEditModal').classList.remove('show'); editingTaskId=null; }
+function saveTaskEdit() {
+  if (!editingTaskId) return;
+  const tasks = getTasks();
+  const base = editingTaskId.replace('_w','');
+  const text = document.getElementById('editTaskText').value.trim(); if(!text) return;
+  const alarmTime = document.getElementById('editTaskAlarm').value || '';
+  const sound = document.getElementById('editTaskSound').value;
+  const day = document.getElementById('editTaskDay').value;
+  const permanent = document.getElementById('editTaskPerm').checked;
+  // Update all versions of this task
+  tasks.forEach(t => {
+    if (t.id === base || t.id === base+'_w') {
+      t.text = text; t.alarmTime = alarmTime; t.sound = sound; t.permanent = permanent;
+      if (t.source === 'weekly' && day) t.day = day;
+    }
+  });
+  setTasks(tasks);
+  // Update alarm if exists
+  const alarms = getAlarms();
+  const ai = alarms.findIndex(a => a.id === 'task_'+base);
+  if (alarmTime) {
+    const now = new Date(); const [h,m] = alarmTime.split(':');
+    const ad = new Date(now.getFullYear(),now.getMonth(),now.getDate(),+h,+m);
+    if (ai >= 0) { alarms[ai].label=text; alarms[ai].time=ad.toISOString().slice(0,16); alarms[ai].sound=sound; alarms[ai].permanent=permanent; alarms[ai].fired=false; }
+    else { alarms.push({id:'task_'+base,label:text,time:ad.toISOString().slice(0,16),fired:false,permanent,sound}); }
+  } else if (ai >= 0) { alarms.splice(ai,1); }
+  setAlarms(alarms);
+  closeTaskEdit(); render();
+}
+function delTaskFromEdit() { if(!editingTaskId)return; delTask(editingTaskId); closeTaskEdit(); }
+
+// ---- Tasks Page ----
+function renderTasks(c) {
+  const tasks = getTasks();
+  const tt = tasks.filter(t=>t.source==='today'), wt = tasks.filter(t=>t.source==='weekly');
+  const dT = tt.filter(t=>t.done).length, dW = wt.filter(t=>t.done).length;
+
+  let html = '<div class="three-col">';
+  // Today
+  html += `<div class="panel"><h3>Today <span class="badge">${dT}/${tt.length}</span></h3>`;
+  tt.forEach(t => { html += taskItemHTML(t); });
+  if (!tt.length) html += '<p style="color:var(--muted);font-size:12px">No tasks for today.</p>';
+  html += `<div class="add-t-row"><input type="text" id="todayTaskInput" placeholder="Add task..." onkeydown="if(event.key==='Enter')addTask('today')"><input type="time" id="todayAlarmTime" title="Alarm"><select id="todaySoundSelect"><option value="classic">Classic</option><option value="gentle">Gentle</option><option value="urgent">Urgent</option><option value="melody">Melody</option><option value="digital">Digital</option><option value="bell">Bell</option></select><label class="cb-label"><input type="checkbox" id="todayPerm"> Perm</label><button class="btn btn-primary btn-sm" onclick="addTask('today')">Add</button></div></div>`;
+
+  // Weekly
+  html += `<div class="panel"><h3>This Week <span class="badge">${dW}/${wt.length}</span></h3>`;
+  wt.forEach(t => { html += taskItemHTML(t, true); });
+  if (!wt.length) html += '<p style="color:var(--muted);font-size:12px">No weekly tasks.</p>';
+  html += `<div class="add-t-row"><input type="text" id="weeklyTaskInput" placeholder="Add task..." onkeydown="if(event.key==='Enter')addTask('weekly')"><select id="weeklyDaySelect"><option value="">Any day</option><option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option></select><input type="time" id="weeklyAlarmTime" title="Alarm"><select id="weeklySoundSelect"><option value="classic">Classic</option><option value="gentle">Gentle</option><option value="urgent">Urgent</option><option value="melody">Melody</option><option value="digital">Digital</option><option value="bell">Bell</option></select><label class="cb-label"><input type="checkbox" id="weeklyPerm"> Perm</label><button class="btn btn-primary btn-sm" onclick="addTask('weekly')">Add</button></div></div>`;
+  html += '</div>';
+  c.innerHTML = html;
+}
+
+function taskItemHTML(t, showDay) {
+  const tags = [];
+  if (t.permanent) tags.push('<span class="tag tag-perm">Permanent</span>');
+  if (t.alarmTime) tags.push('<span class="tag tag-alarm">'+fmt12(t.alarmTime)+'</span>');
+  if (t.sound && t.sound !== 'classic') tags.push('<span class="tag tag-sound">'+esc(SOUND_NAMES[t.sound])+'</span>');
+  return `<div class="t-item">
+    <div class="t-check${t.done?' done':''}" onclick="toggleTask('${t.id}')"></div>
+    <div style="flex:1"><span class="t-text${t.done?' done':''}">${esc(t.text)}</span>
+    <div class="t-meta">${showDay&&t.day?t.day+' ':''}${tags.join(' ')}</div></div>
+    <button class="btn-edit" onclick="openEditTask('${t.id}')">Edit</button>
+    <button class="t-del" onclick="delTask('${t.id}')">x</button>
+  </div>`;
+}
+
+function addTask(source) {
+  const isT = source==='today';
+  const input = document.getElementById(isT?'todayTaskInput':'weeklyTaskInput');
+  const text = input.value.trim(); if(!text) return;
+  const alarmTime = document.getElementById(isT?'todayAlarmTime':'weeklyAlarmTime').value||'';
+  const sound = document.getElementById(isT?'todaySoundSelect':'weeklySoundSelect').value||'classic';
+  const permanent = document.getElementById(isT?'todayPerm':'weeklyPerm').checked;
+  const day = isT ? DAYS_FULL[new Date().getDay()] : (document.getElementById('weeklyDaySelect').value||'');
+  const task = {id:Date.now().toString(),text,done:false,permanent,alarmTime,sound,source,day};
+  const tasks = getTasks(); tasks.push(task);
+  if (isT) { tasks.push({...task,id:task.id+'_w',source:'weekly',day:DAYS_FULL[new Date().getDay()]}); }
+  setTasks(tasks);
+  if (alarmTime) { const al=getAlarms(),now=new Date(),[h,m]=alarmTime.split(':'),ad=new Date(now.getFullYear(),now.getMonth(),now.getDate(),+h,+m); al.push({id:'task_'+task.id,label:text,time:ad.toISOString().slice(0,16),fired:false,permanent,sound}); setAlarms(al); }
+  render();
+}
+function delTask(id) { let t=getTasks();const b=id.replace('_w','');t=t.filter(x=>x.id!==id&&x.id!==b&&x.id!==b+'_w');setTasks(t);setAlarms(getAlarms().filter(a=>a.id!=='task_'+b));render(); }
+
+// ---- To-Do List ----
+function renderTodo(c) {
+  const todos = getTodos();
+  const done = todos.filter(t=>t.done).length;
+  let html = `<div class="panel" style="max-width:600px">
+    <h3>To-Do List <span class="badge badge-green">${done}/${todos.length} done</span></h3>`;
+  if (todos.length) {
+    todos.forEach((t,i) => {
+      html += `<div class="t-item">
+        <div class="t-check${t.done?' done':''}" onclick="toggleTodo(${i})"></div>
+        <span class="t-text${t.done?' done':''}" style="flex:1">${esc(t.text)}</span>
+        <button class="t-del" onclick="delTodo(${i})">x</button>
+      </div>`;
+    });
+  } else { html += '<p style="color:var(--muted);font-size:12px">Your to-do list is empty. Add something!</p>'; }
+  html += `<div class="add-t-row"><input type="text" id="todoInput" placeholder="What do you need to do?" onkeydown="if(event.key==='Enter')addTodo()"><button class="btn btn-primary btn-sm" onclick="addTodo()">Add</button></div>`;
+  if (todos.length > 0 && done === todos.length) html += '<p style="color:var(--green);font-size:13px;margin-top:10px;font-weight:600">All done! Great job!</p>';
+  html += '</div>';
+  c.innerHTML = html;
+}
+function addTodo() { const i=document.getElementById('todoInput'),t=i.value.trim();if(!t)return;const td=getTodos();td.push({text:t,done:false});setTodos(td);render(); }
+function toggleTodo(i) { const t=getTodos();t[i].done=!t[i].done;setTodos(t);render(); }
+function delTodo(i) { const t=getTodos();t.splice(i,1);setTodos(t);render(); }
+
+// ---- Weekly Goals ----
+function renderGoals(c) {
+  const goals = getGoals();
+  const done = goals.filter(g=>g.done).length;
+  let html = `<div class="panel" style="max-width:600px">
+    <h3>Things to Accomplish This Week <span class="badge badge-cyan">${done}/${goals.length}</span></h3>
+    <p style="color:var(--muted);font-size:12px;margin-bottom:12px">Set your weekly targets and track your progress.</p>`;
+  if (goals.length) {
+    goals.forEach((g,i) => {
+      html += `<div class="t-item">
+        <div class="t-check${g.done?' done':''}" onclick="toggleGoal(${i})"></div>
+        <span class="t-text${g.done?' done':''}" style="flex:1">${esc(g.text)}</span>
+        <button class="t-del" onclick="delGoal(${i})">x</button>
+      </div>`;
+    });
+  } else { html += '<p style="color:var(--muted);font-size:12px">No goals set yet. What do you want to accomplish?</p>'; }
+  html += `<div class="add-t-row"><input type="text" id="goalInput" placeholder="Add a weekly goal..." onkeydown="if(event.key==='Enter')addGoal()"><button class="btn btn-primary btn-sm" onclick="addGoal()">Add</button></div>`;
+  if (goals.length > 0) {
+    const pct = Math.round((done/goals.length)*100);
+    html += `<div style="margin-top:14px"><div style="background:var(--surface2);border-radius:8px;height:8px;overflow:hidden"><div style="background:var(--cyan);height:100%;width:${pct}%;transition:.3s;border-radius:8px"></div></div><p style="color:var(--cyan);font-size:12px;margin-top:5px;font-weight:600">${pct}% complete</p></div>`;
+  }
+  if (goals.length > 0 && done === goals.length) html += '<p style="color:var(--green);font-size:14px;margin-top:8px;font-weight:700">You crushed it this week!</p>';
+  html += '</div>';
+  c.innerHTML = html;
+}
+function addGoal() { const i=document.getElementById('goalInput'),t=i.value.trim();if(!t)return;const g=getGoals();g.push({text:t,done:false});setGoals(g);render(); }
+function toggleGoal(i) { const g=getGoals();g[i].done=!g[i].done;setGoals(g);render(); }
+function delGoal(i) { const g=getGoals();g.splice(i,1);setGoals(g);render(); }
+
+// ---- Alarms ----
+function renderAlarms(c) {
+  const alarms = getAlarms().sort((a,b)=>new Date(a.time)-new Date(b.time));
+  if (!alarms.length) { c.innerHTML='<div class="empty">No alarms set. Click + Add Alarm to create one.</div>'; return; }
+  c.innerHTML = alarms.map(a => {
+    const past = new Date(a.time).getTime()<Date.now()&&!a.permanent;
+    const tags=[]; if(a.permanent)tags.push('<span class="tag tag-perm">Permanent</span>'); tags.push('<span class="tag tag-sound">'+esc(SOUND_NAMES[a.sound||'classic'])+'</span>');
+    return `<div class="card" style="${past?'opacity:.5':''}"><h3>${esc(a.label)} ${tags.join(' ')}</h3><p>${fmtDate12(a.time)}</p><div class="card-actions"><button class="btn btn-sm btn-primary" onclick="editAlarm('${a.id}')">Edit</button><button class="btn btn-sm btn-danger" onclick="deleteAlarm('${a.id}')">Delete</button></div></div>`;
+  }).join('');
+}
+
+function openAdd() { editingAlarmId=null;document.getElementById('alarmModalTitle').textContent='New Alarm';document.getElementById('alarmLabel').value='';document.getElementById('alarmTime').value='';document.getElementById('alarmSound').value='classic';document.getElementById('alarmPermanent').checked=false;document.getElementById('alarmModal').classList.add('show'); }
+function closeModals() { document.getElementById('alarmModal').classList.remove('show'); }
+function saveAlarm() {
+  const label=document.getElementById('alarmLabel').value.trim(),time=document.getElementById('alarmTime').value,sound=document.getElementById('alarmSound').value,permanent=document.getElementById('alarmPermanent').checked;
+  if(!label||!time)return;const al=getAlarms();
+  if(editingAlarmId){const i=al.findIndex(a=>a.id===editingAlarmId);if(i>=0){al[i].label=label;al[i].time=time;al[i].fired=false;al[i].permanent=permanent;al[i].sound=sound}}
+  else{al.push({id:Date.now().toString(),label,time,fired:false,permanent,sound})}
+  setAlarms(al);closeModals();render();
+}
+function editAlarm(id) { const a=getAlarms().find(x=>x.id===id);if(!a)return;editingAlarmId=id;document.getElementById('alarmModalTitle').textContent='Edit Alarm';document.getElementById('alarmLabel').value=a.label;document.getElementById('alarmTime').value=a.time;document.getElementById('alarmSound').value=a.sound||'classic';document.getElementById('alarmPermanent').checked=!!a.permanent;document.getElementById('alarmModal').classList.add('show'); }
+function deleteAlarm(id) { setAlarms(getAlarms().filter(a=>a.id!==id));render(); }
+
+function checkAlarms() {
+  const now=new Date(),al=getAlarms();let ch=false;
+  for(const a of al){const at=new Date(a.time);if(a.permanent){if(a.lastFired!==todayKey()&&now.getHours()===at.getHours()&&now.getMinutes()===at.getMinutes()&&now.getSeconds()<2){a.lastFired=todayKey();ch=true;triggerAlarm(a)}}else{if(!a.fired&&at.getTime()<=now.getTime()){a.fired=true;ch=true;triggerAlarm(a)}}}
+  if(ch)setAlarms(al);
+}
+function triggerAlarm(a) { document.getElementById('alarmPopupLabel').textContent=a.label;document.getElementById('alarmPopupTime').textContent=fmtDate12(a.time);document.getElementById('alarmPopup').classList.add('show');playSound(a.sound||'classic'); }
+function dismissAlarm() { document.getElementById('alarmPopup').classList.remove('show');stopAlarmSound(); }
+
+// ---- Timer ----
+function renderTimer(c) {
+  const h=String(Math.floor(timerSeconds/3600)).padStart(2,'0'),m=String(Math.floor((timerSeconds%3600)/60)).padStart(2,'0'),s=String(timerSeconds%60).padStart(2,'0');
+  c.innerHTML=`<div class="timer-wrap"><div class="timer-display">${h}:${m}:${s}</div><div class="timer-controls">${timerRunning?`<button class="btn btn-danger" onclick="pauseTimer()">Pause</button>`:`<button class="btn btn-primary" onclick="startTimer()">Start</button>`}<button class="btn btn-ghost" onclick="resetTimer()">Reset</button></div><div class="timer-presets"><button class="btn btn-ghost btn-sm" onclick="setTimer(1)">1 min</button><button class="btn btn-ghost btn-sm" onclick="setTimer(5)">5 min</button><button class="btn btn-ghost btn-sm" onclick="setTimer(10)">10 min</button><button class="btn btn-ghost btn-sm" onclick="setTimer(15)">15 min</button><button class="btn btn-ghost btn-sm" onclick="setTimer(25)">25 min</button><button class="btn btn-ghost btn-sm" onclick="setTimer(30)">30 min</button><button class="btn btn-ghost btn-sm" onclick="setTimer(60)">1 hr</button></div><div class="timer-set"><input type="number" id="timerH" min="0" max="23" placeholder="H" value="0"><span>:</span><input type="number" id="timerM" min="0" max="59" placeholder="M" value="0"><span>:</span><input type="number" id="timerS" min="0" max="59" placeholder="S" value="0"><button class="btn btn-primary btn-sm" onclick="setCustomTimer()">Set</button></div></div>`;
+}
+function setTimer(m){timerSeconds=m*60;timerOriginal=timerSeconds;timerRunning=false;clearInterval(timerInterval);render()}
+function setCustomTimer(){const h=parseInt(document.getElementById('timerH').value)||0,m=parseInt(document.getElementById('timerM').value)||0,s=parseInt(document.getElementById('timerS').value)||0;timerSeconds=h*3600+m*60+s;timerOriginal=timerSeconds;timerRunning=false;clearInterval(timerInterval);render()}
+function startTimer(){if(timerSeconds<=0)return;timerRunning=true;clearInterval(timerInterval);timerInterval=setInterval(()=>{timerSeconds--;if(timerSeconds<=0){timerSeconds=0;timerRunning=false;clearInterval(timerInterval);document.getElementById('timerPopup').classList.add('show');document.getElementById('timerPopupLabel').textContent='Your timer has finished!';playSound('bell')}if(currentTab==='timer')render()},1000);render()}
+function pauseTimer(){timerRunning=false;clearInterval(timerInterval);render()}
+function resetTimer(){timerRunning=false;clearInterval(timerInterval);timerSeconds=timerOriginal;render()}
+function dismissTimer(){document.getElementById('timerPopup').classList.remove('show');stopAlarmSound()}
+
+// ---- AI Assistant ----
+let aiApiKey = localStorage.getItem('org_claude_key') || '';
+let aiMode = localStorage.getItem('org_ai_mode') || ''; // 'guest' or 'api'
+let aiMessages = getData('org_ai_chat', []);
+let aiLoading = false;
+
+function renderAI(c) {
+  const hasKey = !!aiApiKey;
+  const isGuest = aiMode === 'guest';
+  const isApi = aiMode === 'api' && hasKey;
+  const ready = isGuest || isApi;
+  let html = '';
+
+  // Mode selection (show if no mode chosen yet)
+  if (!aiMode) {
+    html += `<div class="ai-setup" style="max-width:500px;text-align:center">
+      <h3 style="font-size:20px;margin-bottom:14px">Welcome to AI Assistant</h3>
+      <p style="font-size:13px;margin-bottom:20px">Choose how you'd like to use the assistant:</p>
+      <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+        <div style="flex:1;min-width:200px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:20px;cursor:pointer;transition:.15s" onclick="setAIMode('guest')" onmouseover="this.style.borderColor='var(--green)'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="font-size:28px;margin-bottom:8px">🤖</div>
+          <h4 style="color:var(--green);margin-bottom:6px">Continue as Guest</h4>
+          <p style="font-size:11px;color:var(--muted)">Free! Smart assistant that reads your schedule and gives personalized tips, summaries, and motivation. No API key needed.</p>
+        </div>
+        <div style="flex:1;min-width:200px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:20px;cursor:pointer;transition:.15s" onclick="setAIMode('api')" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="font-size:28px;margin-bottom:8px">✨</div>
+          <h4 style="color:var(--accent);margin-bottom:6px">Use Claude API</h4>
+          <p style="font-size:11px;color:var(--muted)">Full Claude AI chat. Ask anything — productivity, planning, study help, coding. Requires an Anthropic API key.</p>
+        </div>
+      </div>
+    </div>`;
+    c.innerHTML = html;
+    return;
+  }
+
+  // API key setup (only for API mode)
+  if (aiMode === 'api') {
+    html += `<div class="ai-setup">
+      <h3>Claude AI <span style="font-size:12px;color:var(--accent);font-weight:400">API Mode</span> <button class="btn-edit" onclick="switchAIMode()" style="margin-left:auto">Switch to Guest</button></h3>
+      <p>Enter your Anthropic API key. Get one at <a href="https://console.anthropic.com/" target="_blank" style="color:var(--accent)">console.anthropic.com</a></p>
+      <input type="password" id="aiKeyInput" placeholder="sk-ant-..." value="${esc(aiApiKey)}" onchange="saveAIKey()">
+      <div class="ai-key-status ${hasKey?'connected':'none'}">${hasKey?'Connected — ready to chat':'Enter your API key above'}</div>
+    </div>`;
+  } else {
+    html += `<div class="ai-setup">
+      <h3>Smart Assistant <span style="font-size:12px;color:var(--green);font-weight:400">Guest Mode</span> <button class="btn-edit" onclick="switchAIMode()" style="margin-left:auto">Switch to API</button></h3>
+      <p>I can read your tasks, to-dos, and goals to give you personalized advice. Try asking about your schedule, productivity tips, or just say hi!</p>
+    </div>`;
+  }
+
+  // Chat area
+  html += '<div class="chat-box"><div class="chat-messages" id="chatMessages">';
+  if (!aiMessages.length) {
+    html += `<div class="chat-msg system">${isGuest ? 'Hi! I\'m your smart assistant. Ask me about your schedule, productivity tips, or try these:' : 'Start a conversation with Claude! Ask about productivity, planning, or anything.'}</div>`;
+    if (isGuest) {
+      html += `<div class="chat-msg system" style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center">
+        <button class="btn btn-ghost btn-sm" onclick="quickAsk('What do I have today?')">What do I have today?</button>
+        <button class="btn btn-ghost btn-sm" onclick="quickAsk('Give me a productivity tip')">Productivity tip</button>
+        <button class="btn btn-ghost btn-sm" onclick="quickAsk('Summarize my week')">Summarize my week</button>
+        <button class="btn btn-ghost btn-sm" onclick="quickAsk('Am I on track with my goals?')">Goal check</button>
+        <button class="btn btn-ghost btn-sm" onclick="quickAsk('Motivate me')">Motivate me</button>
+      </div>`;
+    }
+  }
+  aiMessages.forEach(m => {
+    html += `<div class="chat-msg ${m.role==='user'?'user':'ai'}">${m.role==='user'?esc(m.content):formatAIResponse(m.content)}</div>`;
+  });
+  if (aiLoading) html += '<div class="typing-indicator">Thinking...</div>';
+  html += '</div>';
+  html += `<div class="chat-input-row">
+    <input type="text" id="aiChatInput" placeholder="${ready?'Ask me anything...':'Enter API key above first'}" ${ready?'':'disabled'} onkeydown="if(event.key==='Enter')sendAIMessage()">
+    <button class="btn btn-primary" onclick="sendAIMessage()" ${ready?'':'disabled'}>Send</button>
+    <button class="btn btn-ghost btn-sm" onclick="clearAIChat()">Clear</button>
+  </div></div>`;
+  c.innerHTML = html;
+
+  const msgs = document.getElementById('chatMessages');
+  if (msgs) msgs.scrollTop = msgs.scrollHeight;
+}
+
+function setAIMode(mode) { aiMode = mode; localStorage.setItem('org_ai_mode', mode); aiMessages = []; setData('org_ai_chat', []); render(); }
+function switchAIMode() { aiMode = ''; localStorage.removeItem('org_ai_mode'); aiMessages = []; setData('org_ai_chat', []); render(); }
+function quickAsk(text) { document.getElementById('aiChatInput').value = text; sendAIMessage(); }
+
+function saveAIKey() {
+  aiApiKey = document.getElementById('aiKeyInput').value.trim();
+  localStorage.setItem('org_claude_key', aiApiKey);
+  render();
+}
+
+function formatAIResponse(text) {
+  return text
+    .replace(/```([\s\S]*?)```/g, '<pre>$1</pre>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/\n/g, '<br>');
+}
+
+function getContextSummary() {
+  const tasks = getTasks(), todos = getTodos(), goals = getGoals();
+  const todayTasks = tasks.filter(t => t.source === 'today');
+  const weeklyTasks = tasks.filter(t => t.source === 'weekly');
+  const pendingTodos = todos.filter(t => !t.done);
+  const pendingGoals = goals.filter(g => !g.done);
+  let ctx = 'Here is the user\'s current schedule context:\n';
+  ctx += `- Today's tasks (${todayTasks.length}): ${todayTasks.map(t=>t.text+(t.alarmTime?' at '+fmt12(t.alarmTime):'')).join(', ') || 'none'}\n`;
+  ctx += `- Weekly tasks (${weeklyTasks.length}): ${weeklyTasks.map(t=>t.text+(t.day?' ('+t.day+')':'')).join(', ') || 'none'}\n`;
+  ctx += `- Pending to-dos (${pendingTodos.length}): ${pendingTodos.map(t=>t.text).join(', ') || 'none'}\n`;
+  ctx += `- Weekly goals (${pendingGoals.length} pending): ${pendingGoals.map(g=>g.text).join(', ') || 'none'}\n`;
+  return ctx;
+}
+
+// ---- Guest Mode Smart Responses ----
+function guestResponse(userText) {
+  const q = userText.toLowerCase();
+  const tasks = getTasks(), todos = getTodos(), goals = getGoals();
+  const todayTasks = tasks.filter(t => t.source === 'today');
+  const weeklyTasks = tasks.filter(t => t.source === 'weekly');
+  const doneTodayTasks = todayTasks.filter(t => t.done);
+  const pendingTodos = todos.filter(t => !t.done);
+  const doneTodos = todos.filter(t => t.done);
+  const pendingGoals = goals.filter(g => !g.done);
+  const doneGoals = goals.filter(g => g.done);
+  const now = new Date();
+  const hour = now.getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+
+  // Schedule / today
+  if (q.includes('today') || q.includes('schedule') || q.includes('what do i have')) {
+    if (todayTasks.length === 0) return `${greeting}! Your schedule is clear today — no tasks set. This could be a great day to get ahead on your weekly goals or knock out some to-dos!\n\n${pendingTodos.length ? '**To-dos waiting:** ' + pendingTodos.map(t=>t.text).join(', ') : 'Your to-do list is clear too!'}`;
+    let r = `${greeting}! Here's your day:\n\n`;
+    todayTasks.forEach(t => {
+      r += `• **${t.text}**${t.alarmTime ? ' at ' + fmt12(t.alarmTime) : ''}${t.done ? ' ✅' : ''}${t.permanent ? ' (daily)' : ''}\n`;
+    });
+    r += `\nProgress: **${doneTodayTasks.length}/${todayTasks.length}** tasks done.`;
+    if (doneTodayTasks.length === todayTasks.length) r += ' 🎉 You finished everything!';
+    else if (doneTodayTasks.length > 0) r += ' Keep going, you\'re doing great!';
+    else r += ' Let\'s get started!';
+    return r;
+  }
+
+  // Week summary
+  if (q.includes('week') || q.includes('summary') || q.includes('summarize')) {
+    let r = `**Your Week at a Glance:**\n\n`;
+    r += `📋 **Tasks:** ${weeklyTasks.length} weekly tasks`;
+    if (weeklyTasks.length) {
+      const doneW = weeklyTasks.filter(t => t.done).length;
+      r += ` (${doneW} done, ${weeklyTasks.length - doneW} remaining)\n`;
+      weeklyTasks.forEach(t => { r += `  • ${t.text}${t.day ? ' — ' + t.day : ''}${t.done ? ' ✅' : ''}\n`; });
+    } else r += '\n';
+    r += `\n🎯 **Goals:** ${goals.length} goals set`;
+    if (goals.length) {
+      r += ` — ${doneGoals.length} achieved, ${pendingGoals.length} in progress\n`;
+      goals.forEach(g => { r += `  • ${g.text}${g.done ? ' ✅' : ''}\n`; });
+      r += `\n**Progress: ${Math.round((doneGoals.length/goals.length)*100)}%**`;
+    } else r += '\n';
+    r += `\n\n✅ **To-Dos:** ${doneTodos.length}/${todos.length} completed`;
+    return r;
+  }
+
+  // Goals
+  if (q.includes('goal') || q.includes('track') || q.includes('on track') || q.includes('progress')) {
+    if (!goals.length) return 'You haven\'t set any weekly goals yet! Head to the **Weekly Goals** tab and add some targets. Having clear goals helps you stay focused and motivated.';
+    const pct = Math.round((doneGoals.length / goals.length) * 100);
+    let r = `**Goal Progress: ${pct}%**\n\n`;
+    goals.forEach(g => { r += `${g.done ? '✅' : '⬜'} ${g.text}\n`; });
+    if (pct === 100) r += '\n🎉 **You crushed every single goal!** Amazing work!';
+    else if (pct >= 75) r += '\n🔥 Almost there! Just a little more push!';
+    else if (pct >= 50) r += '\nHalfway done — solid progress. Keep the momentum going!';
+    else if (pct > 0) r += '\nYou\'ve made a start! Try to tackle one more goal today.';
+    else r += '\nTime to get started! Pick the easiest goal first to build momentum.';
+    return r;
+  }
+
+  // Productivity tips
+  if (q.includes('productiv') || q.includes('tip') || q.includes('advice') || q.includes('focus') || q.includes('study')) {
+    const tips = [
+      '**Pomodoro Technique:** Work for 25 minutes, break for 5. Use the Timer tab — the 25-min preset is built for this! After 4 rounds, take a longer 15-30 min break.',
+      '**Two-Minute Rule:** If a task takes less than 2 minutes, do it NOW. Don\'t add it to the to-do list — just knock it out immediately.',
+      '**Eat the Frog:** Tackle your hardest or most dreaded task first thing. Everything else feels easy after that!',
+      '**Time Blocking:** Assign specific time slots to your tasks. Use the alarm feature to set reminders so you stay on track throughout the day.',
+      '**The 80/20 Rule:** 80% of results come from 20% of effort. Identify which tasks have the biggest impact and prioritize those.',
+      '**Break it Down:** Big tasks feel overwhelming. Split them into smaller steps and add each one to your to-do list. Progress feels amazing!',
+      '**Set 3 Daily Priorities:** Each morning, pick just 3 things that MUST get done today. Add them as today\'s tasks. Everything else is a bonus.',
+      '**Review Your Week:** Every Sunday, check your Weekly Goals progress. Celebrate wins, learn from misses, and set new goals for the next week.',
+      '**Eliminate Distractions:** Put your phone in another room while working. Use the Timer for focused work sprints. Your future self will thank you!',
+      '**Reward Yourself:** After completing a hard task, give yourself a small reward. It trains your brain to associate work with positive feelings.'
+    ];
+    const tip = tips[Math.floor(Math.random() * tips.length)];
+    const taskContext = todayTasks.length ? `\n\nBy the way, you have **${todayTasks.length - doneTodayTasks.length} tasks** left today. Try applying this tip right now!` : '';
+    return `Here's a productivity tip for you:\n\n${tip}${taskContext}`;
+  }
+
+  // Motivation
+  if (q.includes('motivat') || q.includes('inspire') || q.includes('encourage') || q.includes('i can\'t') || q.includes('stressed') || q.includes('overwhelm') || q.includes('tired')) {
+    const motivations = [
+      'You\'re doing better than you think. The fact that you\'re here, organizing your life, shows you care about your growth. **That already puts you ahead.**',
+      'Remember: **progress, not perfection.** Every small task you complete is a step forward. You don\'t have to do everything today.',
+      'Feeling overwhelmed? Take a deep breath. Pick just ONE thing from your list and focus only on that. You\'ve got this! 💪',
+      'Your future self is going to look back at this moment and be so grateful you didn\'t give up. **Keep pushing.**',
+      'Tough days don\'t last, but tough people do. Take a 5-minute break (use the Timer!), then come back and crush just one task.',
+      'You\'ve already accomplished things today — even opening this app shows discipline. Now let\'s build on that momentum!',
+      'It\'s okay to feel tired. Rest if you need to, but don\'t quit. Come back when you\'re ready. **Your goals will be here waiting.**',
+      'Think about WHY you set these goals. That reason is bigger than any temporary feeling of doubt. You started for a reason — honor that.'
+    ];
+    const m = motivations[Math.floor(Math.random() * motivations.length)];
+    const stats = todayTasks.length ? `\n\nYour stats: ${doneTodayTasks.length}/${todayTasks.length} today's tasks done, ${doneGoals.length}/${goals.length} weekly goals achieved. ${doneTodayTasks.length > 0 ? 'See? You ARE making progress!' : 'Let\'s get that first one checked off!'}` : '';
+    return m + stats;
+  }
+
+  // Greeting
+  if (q.match(/^(hi|hello|hey|sup|yo|what'?s up|howdy|good)/)) {
+    let r = `${greeting}! 👋 I'm your smart assistant. `;
+    if (todayTasks.length) r += `You have **${todayTasks.length} tasks** today (${doneTodayTasks.length} done). `;
+    if (pendingTodos.length) r += `**${pendingTodos.length} to-dos** are waiting. `;
+    if (pendingGoals.length) r += `**${pendingGoals.length} weekly goals** to go. `;
+    if (!todayTasks.length && !pendingTodos.length && !pendingGoals.length) r += 'Your slate is clean! Perfect time to plan ahead.';
+    r += '\n\nWhat would you like to know?';
+    return r;
+  }
+
+  // To-do related
+  if (q.includes('todo') || q.includes('to-do') || q.includes('to do list') || q.includes('checklist')) {
+    if (!todos.length) return 'Your to-do list is empty! Head over to the **To-Do List** tab to add items. Try brain-dumping everything on your mind — then prioritize.';
+    let r = `**To-Do List Status:** ${doneTodos.length}/${todos.length} done\n\n`;
+    todos.forEach(t => { r += `${t.done ? '✅' : '⬜'} ${t.text}\n`; });
+    if (doneTodos.length === todos.length) r += '\n🎉 All done! Time to add new items or take a well-deserved break.';
+    else r += `\n${pendingTodos.length} items remaining. You can do this!`;
+    return r;
+  }
+
+  // Help / what can you do
+  if (q.includes('help') || q.includes('what can you') || q.includes('what do you')) {
+    return `I can help you with:\n\n• **"What do I have today?"** — See your daily schedule\n• **"Summarize my week"** — Weekly overview with stats\n• **"Am I on track with my goals?"** — Goal progress check\n• **"Give me a productivity tip"** — Random productivity advice\n• **"Motivate me"** — Words of encouragement\n• **"Check my to-dos"** — To-do list summary\n• **"How am I doing?"** — Overall progress report\n\nOr just chat with me about anything schedule-related! For full AI conversations, switch to **API Mode**.`;
+  }
+
+  // How am I doing / status
+  if (q.includes('how am i') || q.includes('status') || q.includes('report') || q.includes('overview')) {
+    let r = `**${greeting}! Here's your overall status:**\n\n`;
+    r += `📅 **Today:** ${todayTasks.length} tasks (${doneTodayTasks.length} done)\n`;
+    r += `📋 **This Week:** ${weeklyTasks.length} tasks\n`;
+    r += `✅ **To-Dos:** ${doneTodos.length}/${todos.length} completed\n`;
+    r += `🎯 **Goals:** ${doneGoals.length}/${goals.length} achieved`;
+    if (goals.length) r += ` (${Math.round((doneGoals.length/goals.length)*100)}%)`;
+    r += '\n\n';
+    const total = doneTodayTasks.length + doneTodos.length + doneGoals.length;
+    if (total > 5) r += '🔥 You\'re on fire! Keep this energy going!';
+    else if (total > 0) r += '👍 Good progress so far. Let\'s keep building!';
+    else r += '💡 Ready to start? Pick one small task and begin!';
+    return r;
+  }
+
+  // Time related
+  if (q.includes('time') || q.includes('what time') || q.includes('clock')) {
+    const timeStr = now.toLocaleString('en-US', { hour:'numeric', minute:'2-digit', hour12:true });
+    const dateStr = now.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric', year:'numeric' });
+    return `It's **${timeStr}** on **${dateStr}**.\n\n${hour < 12 ? 'Morning time! Great for tackling your hardest tasks.' : hour < 17 ? 'Afternoon — stay focused, you\'ve got this!' : 'Evening — wrap up what you can and plan for tomorrow.'}`;
+  }
+
+  // Fallback
+  const fallbacks = [
+    `I'm not sure I understand that fully, but here's what I know: you have **${todayTasks.length} tasks** today and **${pendingGoals.length} goals** this week. Want me to tell you about your schedule or give you a tip?`,
+    `Hmm, that's a great question! As a guest assistant, I'm best at schedule summaries, productivity tips, and motivation. Try asking:\n• "What do I have today?"\n• "Give me a tip"\n• "How am I doing?"\n\nFor deeper conversations, switch to **API Mode** to chat with the full Claude AI!`,
+    `I'd love to help more with that! In guest mode, I focus on your schedule and productivity. Try "summarize my week" or "motivate me" — or switch to **API Mode** for full Claude AI conversations about anything!`
+  ];
+  return fallbacks[Math.floor(Math.random() * fallbacks.length)];
+}
+
+async function sendAIMessage() {
+  const input = document.getElementById('aiChatInput');
+  const text = input.value.trim(); if (!text) return;
+  if (aiLoading) return;
+  input.value = '';
+
+  aiMessages.push({ role: 'user', content: text });
+
+  if (aiMode === 'guest') {
+    // Guest mode: local smart response
+    aiLoading = true;
+    setData('org_ai_chat', aiMessages);
+    render();
+    // Small delay to feel natural
+    await new Promise(r => setTimeout(r, 400 + Math.random() * 600));
+    const reply = guestResponse(text);
+    aiMessages.push({ role: 'assistant', content: reply });
+    aiLoading = false;
+    setData('org_ai_chat', aiMessages);
+    render();
+    return;
+  }
+
+  // API mode
+  if (!aiApiKey) return;
+  aiLoading = true;
+  setData('org_ai_chat', aiMessages);
+  render();
+
+  try {
+    const systemPrompt = `You are Claude, an AI assistant embedded in a personal schedule organizer app called "je ka focus oo". You help the user with productivity, planning, time management, and answering questions. Be friendly, concise, and helpful. When relevant, reference their actual schedule data.\n\n${getContextSummary()}`;
+
+    const apiMessages = aiMessages.map(m => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.content }));
+
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': aiApiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1024,
+        system: systemPrompt,
+        messages: apiMessages
+      })
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.error?.message || `API error ${resp.status}`);
+    }
+
+    const data = await resp.json();
+    const reply = data.content?.[0]?.text || 'No response received.';
+    aiMessages.push({ role: 'assistant', content: reply });
+  } catch (e) {
+    aiMessages.push({ role: 'assistant', content: 'Error: ' + e.message + '\n\nMake sure your API key is valid.' });
+  }
+
+  aiLoading = false;
+  setData('org_ai_chat', aiMessages);
+  render();
+}
+
+function clearAIChat() {
+  aiMessages = [];
+  setData('org_ai_chat', []);
+  render();
+}
+
+// ---- Help Guide ----
+function renderHelp(c) {
+  c.innerHTML = `
+  <div class="help-section">
+    <h3>Welcome to je ka focus oo</h3>
+    <p>Your all-in-one personal schedule organizer. Here's everything you need to know about using this app.</p>
+    <div class="tip">Tip: All your data is saved locally in your browser. It persists even after closing the tab!</div>
+  </div>
+
+  <div class="help-section">
+    <h3>Calendar</h3>
+    <p>The calendar shows a monthly view of your schedule.</p>
+    <h4>How to use:</h4>
+    <ul>
+      <li>Click any day to see what's scheduled — tasks, notes, and goals appear below</li>
+      <li>Colored dots on days indicate content: <span style="color:var(--accent2)">red</span> = notes, <span style="color:var(--green)">green</span> = tasks, <span style="color:var(--orange)">orange</span> = permanent tasks</li>
+      <li>The calendar shows descriptive messages like <em>"You have Algorithms today at 3:00 PM"</em></li>
+      <li>Use the arrows to navigate months, or click "Today" to jump back</li>
+      <li>Add notes to any day using the text field at the bottom</li>
+      <li>Click "Edit" on any task to modify its details</li>
+    </ul>
+  </div>
+
+  <div class="help-section">
+    <h3>Tasks</h3>
+    <p>Manage your daily and weekly tasks in one place.</p>
+    <h4>Today's Tasks:</h4>
+    <ul>
+      <li>Add tasks you need to complete today</li>
+      <li>Today's tasks automatically appear in your weekly view too</li>
+      <li>Click the circle to mark a task as done</li>
+    </ul>
+    <h4>Weekly Tasks:</h4>
+    <ul>
+      <li>Plan ahead by assigning tasks to specific days of the week</li>
+      <li>Weekly tasks show up on the calendar on their assigned day</li>
+    </ul>
+    <h4>Task Options:</h4>
+    <ul>
+      <li><strong>Alarm Time</strong> — Set a time and get a sound notification when it's time</li>
+      <li><strong>Sound</strong> — Choose from 6 alarm sounds (Classic, Gentle, Urgent, Melody, Digital, Bell)</li>
+      <li><strong>Permanent</strong> — Task repeats every day automatically</li>
+      <li><strong>Edit</strong> — Click the Edit button to change any task's details</li>
+    </ul>
+  </div>
+
+  <div class="help-section">
+    <h3>To-Do List</h3>
+    <p>A simple checklist for quick items you need to remember.</p>
+    <ul>
+      <li>Add items and check them off as you complete them</li>
+      <li>When all items are done, you'll see a congratulations message</li>
+      <li>Great for grocery lists, quick reminders, or one-off tasks</li>
+    </ul>
+  </div>
+
+  <div class="help-section">
+    <h3>Weekly Goals</h3>
+    <p>Set bigger goals for the week and track your progress.</p>
+    <ul>
+      <li>Add goals you want to accomplish by the end of the week</li>
+      <li>A progress bar shows your completion percentage</li>
+      <li>Check off goals as you achieve them</li>
+      <li>When all goals are done: "You crushed it this week!"</li>
+    </ul>
+  </div>
+
+  <div class="help-section">
+    <h3>Alarms</h3>
+    <p>Set standalone alarms with custom sounds.</p>
+    <ul>
+      <li>Click "+ Add Alarm" to create a new alarm</li>
+      <li>Set the date, time, and choose an alarm sound</li>
+      <li>Enable "Repeat daily" for permanent alarms that go off every day</li>
+      <li>Preview sounds before saving</li>
+      <li>When an alarm fires, you'll see a popup and hear the sound — click "Dismiss" to stop it</li>
+    </ul>
+    <h4>Available Sounds:</h4>
+    <ul>
+      <li><strong>Classic Beep</strong> — Standard sine wave beep</li>
+      <li><strong>Gentle Chime</strong> — Soft rising chime notes</li>
+      <li><strong>Urgent Siren</strong> — Attention-grabbing alternating tones</li>
+      <li><strong>Melody</strong> — Pleasant musical sequence</li>
+      <li><strong>Digital Buzz</strong> — Quick electronic buzz pattern</li>
+      <li><strong>Bell Ring</strong> — Rich harmonic bell sound</li>
+    </ul>
+  </div>
+
+  <div class="help-section">
+    <h3>Timer</h3>
+    <p>Countdown timer for focus sessions, breaks, or any timed activity.</p>
+    <ul>
+      <li>Use preset buttons (1, 5, 10, 15, 25, 30 min, 1 hr) for quick setup</li>
+      <li>Or set a custom time with hours, minutes, and seconds</li>
+      <li>The 25-minute preset is perfect for Pomodoro technique!</li>
+      <li>A bell sound plays when the timer finishes</li>
+    </ul>
+  </div>
+
+  <div class="help-section">
+    <h3>AI Assistant</h3>
+    <p>Chat with Claude AI for productivity help and planning advice.</p>
+    <ul>
+      <li>You need an Anthropic API key — get one at <a href="https://console.anthropic.com/" target="_blank" style="color:var(--accent)">console.anthropic.com</a></li>
+      <li>Claude can see your current tasks, to-dos, and goals to give personalized advice</li>
+      <li>Ask for productivity tips, study strategies, time management help, or anything!</li>
+      <li>Your API key is stored locally and never shared with anyone except Anthropic's API</li>
+    </ul>
+    <div class="tip">Tip: Try asking Claude "How should I prioritize my tasks today?" or "Give me a study plan for this week"</div>
+  </div>
+
+  <div class="help-section">
+    <h3>Mobile Access</h3>
+    <p>To use this app on your phone:</p>
+    <ul>
+      <li><strong>iPhone/Safari:</strong> Open the file → tap Share → "Add to Home Screen"</li>
+      <li><strong>Android/Chrome:</strong> Open the file → tap menu (⋮) → "Add to Home Screen"</li>
+      <li>For remote access, host the file on GitHub Pages, Netlify, or Vercel (all free)</li>
+    </ul>
+  </div>
+
+  <div class="help-section">
+    <h3>Digital Clock</h3>
+    <p>The live clock in the sidebar shows the current time in 12-hour AM/PM format along with today's date. All times throughout the app use the 12-hour format.</p>
+  </div>
+  `;
+}
+
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
+render();setInterval(checkAlarms,1000);
+</script>
+</body>
+</html>
